@@ -197,7 +197,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <tr>
             <th style="width:36px">#</th>
             <th style="width:28%">Description</th>
-            <th style="width:20%">GL Code</th>
+            <th style="width:20%">Expense Category</th>
             <th style="width:12%">Qty</th>
             <th style="width:14%">Unit Cost</th>
             <th style="width:14%">Line Total</th>
@@ -308,7 +308,7 @@ function addLineItem() {
   tr.innerHTML = `
     <td style="font-family:var(--mono);font-size:.82rem;color:var(--text-hint);padding-top:14px">${lineItemCount}</td>
     <td><input type="text" placeholder="Item description" class="li-desc" required></td>
-    <td><input type="text" placeholder="GL code" class="li-gl"></td>
+    <td><select class="li-cat"><option value="">Select...</option><option value="Office Supplies">Office Supplies</option><option value="Medical Supplies">Medical Supplies</option><option value="Equipment">Equipment</option><option value="IT/Technology">IT/Technology</option><option value="Facilities/Maintenance">Facilities/Maintenance</option><option value="Professional Services">Professional Services</option><option value="Food/Dietary">Food/Dietary</option><option value="Other">Other</option></select></td>
     <td><input type="number" min="1" step="1" value="1" class="li-qty num" oninput="calcLineTotals()"></td>
     <td><input type="number" min="0" step="0.01" placeholder="0.00" class="li-cost num" oninput="calcLineTotals()"></td>
     <td class="line-total" id="lt-${lineItemCount}">$0.00</td>

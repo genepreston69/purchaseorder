@@ -266,6 +266,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION: Paste your Power Automate HTTP trigger URL here
+// ═══════════════════════════════════════════════════════════
+const FLOW_URL = "PASTE_YOUR_POWER_AUTOMATE_HTTP_URL_HERE";
+
 // ── Department data (mirrors Department Approval Matrix list) ──
 const departments = [
   { name: "Administration", code: "100" },
@@ -423,10 +428,19 @@ function showBanner(msg, type) {
 }
 
 function saveDraft() {
-  showBanner("Draft saved successfully. You can return to complete and submit later.", "success");
+  showBanner("Draft saved locally. Complete all fields and submit when ready.", "success");
 }
 
-function submitPO() {
+async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitPO() {
   const errors = validate();
   const summary = document.getElementById("validationSummary");
   
@@ -436,14 +450,78 @@ function submitPO() {
     summary.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-  
   summary.classList.remove("show");
-  showBanner("Purchase Order submitted successfully. You will receive email confirmation with your PO number.", "success");
-  
-  // Update badge
-  document.querySelector(".po-badge").innerHTML = '<span class="dot" style="background:var(--success)"></span> Status: Submitted';
-  document.querySelector(".po-badge").style.background = "var(--success-bg)";
-  document.querySelector(".po-badge").style.color = "var(--success)";
+
+  // ── Collect line items ──
+  const lineItems = [];
+  document.querySelectorAll("#lineItemsBody tr").forEach(row => {
+    lineItems.push({
+      Title: row.querySelector(".li-desc")?.value?.trim() || "",
+      ItemDescription: row.querySelector(".li-desc")?.value?.trim() || "",
+      Quantity: parseFloat(row.querySelector(".li-qty")?.value) || 0,
+      UnitCost: parseFloat(row.querySelector(".li-cost")?.value) || 0,
+      ExpenseCategory: row.querySelector(".li-cat")?.value || "",
+    });
+  });
+
+  // ── Convert attachments to base64 ──
+  const attachments = [];
+  for (const file of uploadedFiles) {
+    const base64 = await fileToBase64(file);
+    attachments.push({ fileName: file.name, fileContent: base64 });
+  }
+
+  // ── Build JSON payload ──
+  const payload = {
+    Title: document.getElementById("vendor").value.trim() + " - " + new Date().toLocaleDateString(),
+    RequestedDate: document.getElementById("requestedDate").value,
+    Originator: document.getElementById("originator").value || "Current User",
+    DepartmentName: document.getElementById("department").value,
+    DepartmentCode: document.getElementById("deptCode").value,
+    Vendor: document.getElementById("vendor").value.trim(),
+    PurchaseJustification: document.getElementById("justification").value.trim(),
+    ExpenseCategory: document.getElementById("expenseCategory").value,
+    LineItems: lineItems,
+    Attachments: attachments,
+  };
+
+  // ── Show loading state ──
+  const submitBtn = document.querySelector(".btn-primary");
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting...";
+  showBanner("Submitting your purchase order...", "warn");
+
+  try {
+    const response = await fetch(FLOW_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      const result = await response.json().catch(() => ({}));
+      const poNumber = result.PONumber || "pending";
+      
+      showBanner(`Purchase Order submitted successfully! PO Number: ${poNumber}. You will receive email confirmation.`, "success");
+      document.querySelector(".po-badge").innerHTML = `<span class="dot" style="background:var(--success)"></span> Status: Submitted | ${poNumber}`;
+      document.querySelector(".po-badge").style.background = "var(--success-bg)";
+      document.querySelector(".po-badge").style.color = "var(--success)";
+      
+      // Disable form after successful submission
+      document.querySelectorAll("input, select, textarea, button").forEach(el => { 
+        if (!el.classList.contains("btn-secondary")) el.disabled = true; 
+      });
+    } else {
+      const errText = await response.text().catch(() => "Unknown error");
+      showBanner(`Submission failed: ${errText}. Please try again or contact Finance.`, "error");
+    }
+  } catch (err) {
+    showBanner(`Connection error: ${err.message}. Check your network and try again.`, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  }
 }
 
 // Start with one line item

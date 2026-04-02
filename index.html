@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchase Order Request | Summit BHC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f3;--surface:#fff;--surface-alt:#faf9f7;
+  --border:#e2dfd8;--border-focus:#1a5276;
+  --text:#1a1a1a;--text-muted:#6b6560;--text-hint:#9e9890;
+  --accent:#1a5276;--accent-light:#e8f0f6;
+  --success:#1e7a46;--success-bg:#e8f5ed;
+  --warn:#b45309;--warn-bg:#fef3e2;
+  --danger:#b91c1c;--danger-bg:#fde8e8;
+  --radius:6px;--radius-lg:10px;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+.top-bar{background:var(--accent);color:#fff;padding:12px 24px;display:flex;align-items:center;gap:16px;font-size:.85rem;letter-spacing:.02em}
+.top-bar .logo{font-weight:700;font-size:1rem;letter-spacing:.04em}
+.top-bar .sep{opacity:.3}
+.top-bar .env{background:rgba(255,255,255,.15);padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:500}
+
+.shell{max-width:960px;margin:0 auto;padding:32px 24px 80px}
+
+.page-header{margin-bottom:32px}
+.page-header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;color:var(--text)}
+.page-header .subtitle{font-size:.9rem;color:var(--text-muted);margin-top:4px}
+.page-header .po-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:var(--accent-light);color:var(--accent);padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;letter-spacing:.02em}
+.page-header .po-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:24px;overflow:hidden}
+.card-head{padding:16px 24px;background:var(--surface-alt);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-head h2{font-size:.95rem;font-weight:600;color:var(--text)}
+.card-head .step{font-size:.75rem;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.06em}
+.card-body{padding:24px}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.form-grid .full{grid-column:1/-1}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.8rem;font-weight:600;color:var(--text-muted);letter-spacing:.02em}
+.field label .req{color:var(--danger);margin-left:2px}
+.field input,.field select,.field textarea{
+  font-family:var(--font);font-size:.93rem;padding:10px 14px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);color:var(--text);
+  transition:border-color .15s,box-shadow .15s;outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,82,118,.1)}
+.field textarea{resize:vertical;min-height:80px}
+.field select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6560' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.field .hint{font-size:.75rem;color:var(--text-hint)}
+
+.line-items-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.line-items-table th{text-align:left;font-size:.75rem;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:2px solid var(--border)}
+.line-items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.line-items-table td input,.line-items-table td textarea,.line-items-table td select{width:100%;font-family:var(--font);font-size:.88rem;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none}
+.line-items-table td input:focus,.line-items-table td textarea:focus,.line-items-table td select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,82,118,.1)}
+.line-items-table .num{text-align:right;font-family:var(--mono);font-size:.85rem}
+.line-items-table .line-total{font-family:var(--mono);font-size:.88rem;font-weight:600;color:var(--text);padding:8px 10px;text-align:right}
+.line-items-table .remove-btn{background:none;border:none;color:var(--text-hint);cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:var(--radius);transition:all .15s}
+.line-items-table .remove-btn:hover{background:var(--danger-bg);color:var(--danger)}
+
+.add-line-btn{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--accent);font-family:var(--font);font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s}
+.add-line-btn:hover{background:var(--accent-light);border-color:var(--accent)}
+
+.totals-bar{display:flex;justify-content:flex-end;padding:16px 24px;background:var(--surface-alt);border-top:1px solid var(--border)}
+.totals-bar .total-label{font-size:.85rem;color:var(--text-muted);margin-right:12px}
+.totals-bar .total-value{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--accent)}
+
+.file-drop{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:32px;text-align:center;cursor:pointer;transition:all .2s}
+.file-drop:hover,.file-drop.dragover{border-color:var(--accent);background:var(--accent-light)}
+.file-drop .icon{font-size:1.8rem;margin-bottom:8px;opacity:.4}
+.file-drop p{font-size:.88rem;color:var(--text-muted)}
+.file-drop .browse{color:var(--accent);font-weight:600;text-decoration:underline}
+.file-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.file-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--success-bg);border-radius:var(--radius);font-size:.85rem;color:var(--success)}
+.file-item .fname{flex:1;font-weight:500}
+.file-item .fsize{color:var(--text-hint);font-family:var(--mono);font-size:.78rem}
+.file-item .fremove{background:none;border:none;color:var(--text-hint);cursor:pointer;font-size:.9rem}
+.file-item .fremove:hover{color:var(--danger)}
+
+.actions-bar{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+.btn{font-family:var(--font);font-size:.9rem;font-weight:600;padding:11px 28px;border-radius:var(--radius);cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#15456a}
+.btn-secondary{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--surface-alt);color:var(--text)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.status-banner{padding:14px 20px;border-radius:var(--radius);margin-bottom:20px;font-size:.88rem;font-weight:500;display:none;align-items:center;gap:10px}
+.status-banner.show{display:flex}
+.status-banner.success{background:var(--success-bg);color:var(--success)}
+.status-banner.warn{background:var(--warn-bg);color:var(--warn)}
+.status-banner.error{background:var(--danger-bg);color:var(--danger)}
+
+.validation-summary{padding:14px 20px;border-radius:var(--radius);background:var(--danger-bg);color:var(--danger);margin-bottom:20px;font-size:.85rem;display:none}
+.validation-summary.show{display:block}
+.validation-summary ul{margin:8px 0 0 20px}
+.validation-summary li{margin-bottom:4px}
+
+.footer-note{text-align:center;margin-top:40px;font-size:.78rem;color:var(--text-hint)}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="logo">SUMMIT BHC</span>
+  <span class="sep">|</span>
+  <span>Highland Leadership</span>
+  <span class="sep">|</span>
+  <span>Purchase Order System</span>
+  <span class="env">v1.0</span>
+</div>
+
+<div class="shell">
+
+<div class="page-header">
+  <h1>New Purchase Order Request</h1>
+  <p class="subtitle">Complete all required fields, add line items, and attach a supporting quote before submitting.</p>
+  <div class="po-badge"><span class="dot"></span> Status: Draft</div>
+</div>
+
+<div id="statusBanner" class="status-banner"></div>
+<div id="validationSummary" class="validation-summary"></div>
+
+<!-- ── SECTION 1: HEADER INFO ── -->
+<div class="card">
+  <div class="card-head">
+    <h2>PO Header Information</h2>
+    <span class="step">Step 1 of 4</span>
+  </div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div class="field">
+        <label>Requested Date <span class="req">*</span></label>
+        <input type="date" id="requestedDate" required>
+      </div>
+      <div class="field">
+        <label>Originator</label>
+        <input type="text" id="originator" placeholder="Auto-filled from login" readonly style="background:var(--surface-alt);color:var(--text-muted)">
+      </div>
+      <div class="field">
+        <label>Department <span class="req">*</span></label>
+        <select id="department" required>
+          <option value="">Select department...</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Department Code</label>
+        <input type="text" id="deptCode" readonly placeholder="Auto-populated" style="background:var(--surface-alt);color:var(--text-muted);font-family:var(--mono)">
+      </div>
+      <div class="field">
+        <label>Expense Category <span class="req">*</span></label>
+        <select id="expenseCategory" required>
+          <option value="">Select category...</option>
+          <option value="Office Supplies">Office Supplies</option>
+          <option value="Medical Supplies">Medical Supplies</option>
+          <option value="Equipment">Equipment</option>
+          <option value="IT/Technology">IT/Technology</option>
+          <option value="Facilities/Maintenance">Facilities/Maintenance</option>
+          <option value="Professional Services">Professional Services</option>
+          <option value="Food/Dietary">Food/Dietary</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Vendor <span class="req">*</span></label>
+        <input type="text" id="vendor" required placeholder="Enter vendor name">
+      </div>
+      <div class="field full">
+        <label>Purchase Justification <span class="req">*</span></label>
+        <textarea id="justification" required placeholder="Explain the business need for this purchase..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 2: LINE ITEMS ── -->
+<div class="card">
+  <div class="card-head">
+    <h2>Line Items</h2>
+    <span class="step">Step 2 of 4</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div style="overflow-x:auto">
+      <table class="line-items-table">
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th style="width:28%">Description</th>
+            <th style="width:20%">GL Code</th>
+            <th style="width:12%">Qty</th>
+            <th style="width:14%">Unit Cost</th>
+            <th style="width:14%">Line Total</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="lineItemsBody">
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:0 24px 16px">
+      <button class="add-line-btn" onclick="addLineItem()">+ Add Line Item</button>
+    </div>
+  </div>
+  <div class="totals-bar">
+    <span class="total-label">PO Total</span>
+    <span class="total-value" id="poTotal">$0.00</span>
+  </div>
+</div>
+
+<!-- ── SECTION 3: ATTACHMENTS ── -->
+<div class="card">
+  <div class="card-head">
+    <h2>Attachments</h2>
+    <span class="step">Step 3 of 4</span>
+  </div>
+  <div class="card-body">
+    <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">&#128206;</div>
+      <p>Drag and drop files here, or <span class="browse">browse</span></p>
+      <p style="font-size:.78rem;color:var(--text-hint);margin-top:4px">A quote or supporting document is required for every PO</p>
+    </div>
+    <input type="file" id="fileInput" multiple style="display:none" onchange="handleFiles(this.files)">
+    <div class="file-list" id="fileList"></div>
+  </div>
+</div>
+
+<!-- ── SECTION 4: REVIEW & SUBMIT ── -->
+<div class="card">
+  <div class="card-head">
+    <h2>Review &amp; Submit</h2>
+    <span class="step">Step 4 of 4</span>
+  </div>
+  <div class="card-body">
+    <div id="reviewSummary" style="font-size:.9rem;color:var(--text-muted);line-height:1.7">
+      Complete all sections above, then submit for approval routing.<br>
+      POs under $100 are auto-approved. POs $100+ are routed to the appropriate approver based on your department and the total amount.
+    </div>
+    <div style="margin-top:16px;padding:14px 18px;background:var(--surface-alt);border-radius:var(--radius);font-size:.82rem;color:var(--text-muted);border-left:3px solid var(--accent)">
+      <strong style="color:var(--text)">Approval thresholds:</strong><br>
+      &lt; $100 &mdash; Auto-approved &nbsp;|&nbsp;
+      $100&ndash;$399 &mdash; Dept Head &nbsp;|&nbsp;
+      $400&ndash;$999 &mdash; Controller &nbsp;|&nbsp;
+      $1,000&ndash;$2,999 &mdash; CFO &nbsp;|&nbsp;
+      $3,000+ &mdash; CEO
+    </div>
+    <div class="actions-bar" style="margin-top:20px">
+      <button class="btn btn-secondary" onclick="saveDraft()">Save as Draft</button>
+      <button class="btn btn-primary" onclick="submitPO()">Submit for Approval</button>
+    </div>
+  </div>
+</div>
+
+<p class="footer-note">Summit BHC &middot; Purchase Order System v1.0 &middot; Highland Leadership Site<br>Questions? Contact Finance at ext. 4200</p>
+
+</div>
+
+<script>
+// ── Department data (mirrors Department Approval Matrix list) ──
+const departments = [
+  { name: "Administration", code: "100" },
+  { name: "Nursing", code: "200" },
+  { name: "Clinical Services", code: "201" },
+  { name: "Dietary", code: "300" },
+  { name: "Facilities", code: "301" },
+  { name: "Human Resources", code: "400" },
+  { name: "IT", code: "401" },
+  { name: "Business Office", code: "500" },
+  { name: "Pharmacy", code: "501" },
+];
+
+// Populate department dropdown
+const deptSelect = document.getElementById("department");
+departments.forEach(d => {
+  const opt = document.createElement("option");
+  opt.value = d.name;
+  opt.textContent = `${d.name} (${d.code})`;
+  opt.dataset.code = d.code;
+  deptSelect.appendChild(opt);
+});
+
+deptSelect.addEventListener("change", function() {
+  const selected = this.options[this.selectedIndex];
+  document.getElementById("deptCode").value = selected.dataset.code || "";
+});
+
+// Set today's date
+document.getElementById("requestedDate").valueAsDate = new Date();
+
+// ── Line items ──
+let lineItemCount = 0;
+
+function addLineItem() {
+  lineItemCount++;
+  const tbody = document.getElementById("lineItemsBody");
+  const tr = document.createElement("tr");
+  tr.id = `line-${lineItemCount}`;
+  tr.innerHTML = `
+    <td style="font-family:var(--mono);font-size:.82rem;color:var(--text-hint);padding-top:14px">${lineItemCount}</td>
+    <td><input type="text" placeholder="Item description" class="li-desc" required></td>
+    <td><input type="text" placeholder="GL code" class="li-gl"></td>
+    <td><input type="number" min="1" step="1" value="1" class="li-qty num" oninput="calcLineTotals()"></td>
+    <td><input type="number" min="0" step="0.01" placeholder="0.00" class="li-cost num" oninput="calcLineTotals()"></td>
+    <td class="line-total" id="lt-${lineItemCount}">$0.00</td>
+    <td><button class="remove-btn" onclick="removeLine(${lineItemCount})" title="Remove">&times;</button></td>
+  `;
+  tbody.appendChild(tr);
+  calcLineTotals();
+}
+
+function removeLine(id) {
+  const row = document.getElementById(`line-${id}`);
+  if (row) row.remove();
+  renumberLines();
+  calcLineTotals();
+}
+
+function renumberLines() {
+  const rows = document.querySelectorAll("#lineItemsBody tr");
+  rows.forEach((row, i) => {
+    row.querySelector("td:first-child").textContent = i + 1;
+  });
+}
+
+function calcLineTotals() {
+  let total = 0;
+  const rows = document.querySelectorAll("#lineItemsBody tr");
+  rows.forEach(row => {
+    const qty = parseFloat(row.querySelector(".li-qty")?.value) || 0;
+    const cost = parseFloat(row.querySelector(".li-cost")?.value) || 0;
+    const lineTotal = qty * cost;
+    total += lineTotal;
+    const ltCell = row.querySelector(".line-total");
+    if (ltCell) ltCell.textContent = "$" + lineTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  });
+  document.getElementById("poTotal").textContent = "$" + total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  updateReview(total);
+}
+
+function updateReview(total) {
+  let tier = "Auto-approved";
+  if (total >= 3000) tier = "CEO approval required";
+  else if (total >= 1000) tier = "CFO approval required";
+  else if (total >= 400) tier = "Controller approval required";
+  else if (total >= 100) tier = "Dept Head approval required";
+}
+
+// ── File handling ──
+let uploadedFiles = [];
+
+const fileDrop = document.getElementById("fileDrop");
+fileDrop.addEventListener("dragover", e => { e.preventDefault(); fileDrop.classList.add("dragover"); });
+fileDrop.addEventListener("dragleave", () => fileDrop.classList.remove("dragover"));
+fileDrop.addEventListener("drop", e => {
+  e.preventDefault();
+  fileDrop.classList.remove("dragover");
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    uploadedFiles.push(f);
+    renderFileList();
+  });
+}
+
+function renderFileList() {
+  const list = document.getElementById("fileList");
+  list.innerHTML = "";
+  uploadedFiles.forEach((f, i) => {
+    const size = f.size < 1024 ? f.size + " B" : (f.size / 1024).toFixed(1) + " KB";
+    const div = document.createElement("div");
+    div.className = "file-item";
+    div.innerHTML = `<span class="fname">${f.name}</span><span class="fsize">${size}</span><button class="fremove" onclick="removeFile(${i})">&times;</button>`;
+    list.appendChild(div);
+  });
+}
+
+function removeFile(index) {
+  uploadedFiles.splice(index, 1);
+  renderFileList();
+}
+
+// ── Validation & Submit ──
+function validate() {
+  const errors = [];
+  if (!document.getElementById("requestedDate").value) errors.push("Requested Date is required");
+  if (!document.getElementById("department").value) errors.push("Department is required");
+  if (!document.getElementById("expenseCategory").value) errors.push("Expense Category is required");
+  if (!document.getElementById("vendor").value.trim()) errors.push("Vendor is required");
+  if (!document.getElementById("justification").value.trim()) errors.push("Purchase Justification is required");
+  
+  const lineRows = document.querySelectorAll("#lineItemsBody tr");
+  if (lineRows.length === 0) errors.push("At least one line item is required");
+  lineRows.forEach((row, i) => {
+    const desc = row.querySelector(".li-desc")?.value?.trim();
+    const cost = parseFloat(row.querySelector(".li-cost")?.value);
+    if (!desc) errors.push(`Line item ${i+1}: Description is required`);
+    if (!cost || cost <= 0) errors.push(`Line item ${i+1}: Unit Cost must be greater than 0`);
+  });
+
+  if (uploadedFiles.length === 0) errors.push("A quote or supporting document must be attached");
+
+  return errors;
+}
+
+function showBanner(msg, type) {
+  const banner = document.getElementById("statusBanner");
+  banner.className = `status-banner show ${type}`;
+  banner.textContent = msg;
+  banner.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => banner.classList.remove("show"), 6000);
+}
+
+function saveDraft() {
+  showBanner("Draft saved successfully. You can return to complete and submit later.", "success");
+}
+
+function submitPO() {
+  const errors = validate();
+  const summary = document.getElementById("validationSummary");
+  
+  if (errors.length > 0) {
+    summary.innerHTML = `<strong>Please correct the following before submitting:</strong><ul>${errors.map(e => `<li>${e}</li>`).join("")}</ul>`;
+    summary.classList.add("show");
+    summary.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  
+  summary.classList.remove("show");
+  showBanner("Purchase Order submitted successfully. You will receive email confirmation with your PO number.", "success");
+  
+  // Update badge
+  document.querySelector(".po-badge").innerHTML = '<span class="dot" style="background:var(--success)"></span> Status: Submitted';
+  document.querySelector(".po-badge").style.background = "var(--success-bg)";
+  document.querySelector(".po-badge").style.color = "var(--success)";
+}
+
+// Start with one line item
+addLineItem();
+</script>
+
+</body>
+</html>

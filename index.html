@@ -107,6 +107,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .validation-summary ul{margin:8px 0 0 20px}
 .validation-summary li{margin-bottom:4px}
 
+.routing-display{margin-top:16px;padding:16px 18px;background:var(--accent-light);border-radius:var(--radius);font-size:.86rem;color:var(--text);line-height:1.6}
+.route-chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.route-step{background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-weight:600;font-size:.78rem;padding:6px 12px;border-radius:20px;white-space:nowrap}
+.route-arrow{color:var(--accent);font-weight:700}
+.threshold-ref{margin-top:16px;padding:14px 18px;background:var(--surface-alt);border-radius:var(--radius);font-size:.82rem;color:var(--text-muted);border-left:3px solid var(--accent)}
+.threshold-ref>strong{color:var(--text);display:block;margin-bottom:8px}
+.threshold-row{display:flex;gap:14px;padding:3px 0}
+.threshold-row .t-amt{font-family:var(--mono);font-size:.76rem;min-width:130px;color:var(--text)}
+.threshold-row .t-chain{color:var(--text-muted)}
+@media(max-width:480px){.threshold-row{flex-direction:column;gap:0}}
+
 .footer-note{text-align:center;margin-top:40px;font-size:.78rem;color:var(--text-hint)}
 </style>
 </head>
@@ -243,16 +254,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   </div>
   <div class="card-body">
     <div id="reviewSummary" style="font-size:.9rem;color:var(--text-muted);line-height:1.7">
-      Complete all sections above, then submit for approval routing.<br>
-      POs under $100 are auto-approved. POs $100+ are routed to the appropriate approver based on your department and the total amount.
+      Complete all sections above, then submit for approval routing. The routing below updates automatically as you add line items.
     </div>
-    <div style="margin-top:16px;padding:14px 18px;background:var(--surface-alt);border-radius:var(--radius);font-size:.82rem;color:var(--text-muted);border-left:3px solid var(--accent)">
-      <strong style="color:var(--text)">Approval thresholds:</strong><br>
-      &lt; $100 &mdash; Auto-approved &nbsp;|&nbsp;
-      $100&ndash;$399 &mdash; Dept Head &nbsp;|&nbsp;
-      $400&ndash;$999 &mdash; Controller &nbsp;|&nbsp;
-      $1,000&ndash;$2,999 &mdash; CFO &nbsp;|&nbsp;
-      $3,000+ &mdash; CEO
+    <div id="routingDisplay" class="routing-display">Add line items to see the approval routing for this purchase order.</div>
+    <div class="threshold-ref">
+      <strong>Sequential approval thresholds</strong>
+      <div class="threshold-row"><span class="t-amt">&lt; $100</span><span class="t-chain">Auto-approved</span></div>
+      <div class="threshold-row"><span class="t-amt">$100 &ndash; $399</span><span class="t-chain">Dept Head</span></div>
+      <div class="threshold-row"><span class="t-amt">$400 &ndash; $999</span><span class="t-chain">Dept Head &rarr; Controller</span></div>
+      <div class="threshold-row"><span class="t-amt">$1,000 &ndash; $2,999</span><span class="t-chain">Dept Head &rarr; Controller &rarr; CFO</span></div>
+      <div class="threshold-row"><span class="t-amt">$3,000 +</span><span class="t-chain">Dept Head &rarr; Controller &rarr; CFO &rarr; CEO</span></div>
     </div>
     <div class="actions-bar" style="margin-top:20px">
       <button class="btn btn-secondary" onclick="saveDraft()">Save as Draft</button>
@@ -352,12 +363,49 @@ function calcLineTotals() {
   updateReview(total);
 }
 
+// ── Sequential escalation chain: each tier adds the next approver ──
+function getApprovalChain(total) {
+  if (total < 100) return [];
+  const chain = ["Dept Head"];
+  if (total >= 400) chain.push("Controller");
+  if (total >= 1000) chain.push("CFO");
+  if (total >= 3000) chain.push("CEO");
+  return chain;
+}
+
+function fmtCurrency(n) {
+  return "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getPOTotal() {
+  let total = 0;
+  document.querySelectorAll("#lineItemsBody tr").forEach(row => {
+    const qty = parseFloat(row.querySelector(".li-qty")?.value) || 0;
+    const cost = parseFloat(row.querySelector(".li-cost")?.value) || 0;
+    total += qty * cost;
+  });
+  return total;
+}
+
 function updateReview(total) {
-  let tier = "Auto-approved";
-  if (total >= 3000) tier = "CEO approval required";
-  else if (total >= 1000) tier = "CFO approval required";
-  else if (total >= 400) tier = "Controller approval required";
-  else if (total >= 100) tier = "Dept Head approval required";
+  const display = document.getElementById("routingDisplay");
+  if (!display) return;
+  if (!total || total <= 0) {
+    display.innerHTML = "Add line items to see the approval routing for this purchase order.";
+    return;
+  }
+  const chain = getApprovalChain(total);
+  if (chain.length === 0) {
+    display.innerHTML = `This purchase order totals <strong>${fmtCurrency(total)}</strong> &mdash; under the $100 threshold. It will be <strong>auto-approved</strong> the moment you submit.`;
+    return;
+  }
+  const steps = chain
+    .map((role, i) => `<span class="route-step">${i + 1}. ${role}</span>`)
+    .join('<span class="route-arrow">&rarr;</span>');
+  display.innerHTML =
+    `This purchase order totals <strong>${fmtCurrency(total)}</strong> and requires <strong>${chain.length}</strong> sequential approval${chain.length > 1 ? "s" : ""}. ` +
+    `Each approver must approve in order before the PO is finalized:` +
+    `<div class="route-chain">${steps}</div>`;
 }
 
 // ── File handling ──
@@ -472,6 +520,7 @@ async function submitPO() {
   }
 
   // ── Build JSON payload ──
+  const poTotal = getPOTotal();
   const payload = {
     Title: document.getElementById("vendor").value.trim() + " - " + new Date().toLocaleDateString(),
     RequestedDate: document.getElementById("requestedDate").value,
@@ -481,6 +530,8 @@ async function submitPO() {
     Vendor: document.getElementById("vendor").value.trim(),
     PurchaseJustification: document.getElementById("justification").value.trim(),
     ExpenseCategory: document.getElementById("expenseCategory").value,
+    POTotal: poTotal,
+    ApprovalChain: getApprovalChain(poTotal),
     LineItems: lineItems,
     Attachments: attachments,
   };

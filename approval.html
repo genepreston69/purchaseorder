@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchase Order Approval | Summit BHC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f3;--surface:#fff;--surface-alt:#faf9f7;
+  --border:#e2dfd8;--border-focus:#1a5276;
+  --text:#1a1a1a;--text-muted:#6b6560;--text-hint:#9e9890;
+  --accent:#1a5276;--accent-light:#e8f0f6;
+  --success:#1e7a46;--success-bg:#e8f5ed;
+  --warn:#b45309;--warn-bg:#fef3e2;
+  --danger:#b91c1c;--danger-bg:#fde8e8;
+  --radius:6px;--radius-lg:10px;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+.top-bar{background:var(--accent);color:#fff;padding:12px 24px;display:flex;align-items:center;gap:16px;font-size:.85rem;letter-spacing:.02em}
+.top-bar .logo{font-weight:700;font-size:1rem;letter-spacing:.04em}
+.top-bar .sep{opacity:.3}
+.top-bar .env{background:rgba(255,255,255,.15);padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:500}
+
+.shell{max-width:960px;margin:0 auto;padding:32px 24px 80px}
+
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;color:var(--text)}
+.page-header .subtitle{font-size:.9rem;color:var(--text-muted);margin-top:4px}
+.po-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;letter-spacing:.02em;background:var(--accent-light);color:var(--accent)}
+.po-badge .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.po-badge.s-approved{background:var(--success-bg);color:var(--success)}
+.po-badge.s-rejected{background:var(--danger-bg);color:var(--danger)}
+.po-badge.s-pending{background:var(--warn-bg);color:var(--warn)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:24px;overflow:hidden}
+.card-head{padding:16px 24px;background:var(--surface-alt);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.card-head h2{font-size:.95rem;font-weight:600;color:var(--text)}
+.card-head .step{font-size:.75rem;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.06em}
+.card-body{padding:24px}
+
+.status-banner{padding:14px 20px;border-radius:var(--radius);margin-bottom:20px;font-size:.88rem;font-weight:500;display:none;align-items:center;gap:10px}
+.status-banner.show{display:flex}
+.status-banner.success{background:var(--success-bg);color:var(--success)}
+.status-banner.warn{background:var(--warn-bg);color:var(--warn)}
+.status-banner.error{background:var(--danger-bg);color:var(--danger)}
+
+.loading{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:.9rem}
+
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 32px}
+@media(max-width:640px){.summary-grid{grid-template-columns:1fr}}
+.summary-item.s-full{grid-column:1/-1}
+.summary-item .s-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint)}
+.summary-item .s-value{font-size:.95rem;color:var(--text);margin-top:4px;line-height:1.55}
+.total-line{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:14px 18px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border)}
+.total-line .tl-label{font-size:.85rem;color:var(--text-muted);font-weight:600}
+.total-line .tl-value{font-family:var(--mono);font-size:1.3rem;font-weight:700;color:var(--accent)}
+
+.line-items-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.line-items-table th{text-align:left;font-size:.75rem;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.04em;padding:10px 14px;border-bottom:2px solid var(--border)}
+.line-items-table th.num{text-align:right}
+.line-items-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.line-items-table tr:last-child td{border-bottom:none}
+.line-items-table .num{text-align:right;font-family:var(--mono);font-size:.85rem}
+.line-items-table .rownum{font-family:var(--mono);font-size:.82rem;color:var(--text-hint)}
+.line-items-table .line-total{font-weight:600;color:var(--text)}
+
+.attach-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);font-size:.88rem;margin-bottom:8px}
+.attach-item:last-child{margin-bottom:0}
+.attach-item .a-icon{opacity:.5}
+.attach-item .a-name{flex:1;font-weight:500;color:var(--text)}
+.attach-item a.a-name{color:var(--accent);text-decoration:none}
+.attach-item a.a-name:hover{text-decoration:underline}
+
+.chain{padding:4px 0}
+.chain-step{display:flex;gap:14px}
+.chain-step .rail{display:flex;flex-direction:column;align-items:center}
+.chain-step .marker{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.chain-step .connector{width:2px;flex:1;min-height:20px;background:var(--border);margin:4px 0}
+.chain-step:last-child .connector{display:none}
+.marker.done{background:var(--success);color:#fff}
+.marker.active{background:var(--accent);color:#fff;box-shadow:0 0 0 4px var(--accent-light)}
+.marker.rejected{background:var(--danger);color:#fff}
+.marker.waiting{background:var(--surface);border:2px solid var(--border);color:var(--text-hint)}
+.chain-step .info{padding-bottom:22px;flex:1}
+.chain-step:last-child .info{padding-bottom:0}
+.info .role-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.info .role{font-weight:600;font-size:.92rem;color:var(--text)}
+.info .approver{font-size:.85rem;color:var(--text-muted)}
+.info .step-status{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:12px}
+.step-status.done{background:var(--success-bg);color:var(--success)}
+.step-status.active{background:var(--accent-light);color:var(--accent)}
+.step-status.rejected{background:var(--danger-bg);color:var(--danger)}
+.step-status.waiting{background:var(--surface-alt);color:var(--text-hint)}
+.info .step-meta{font-size:.78rem;color:var(--text-hint);margin-top:4px;font-family:var(--mono)}
+.info .step-comment{margin-top:8px;font-size:.85rem;color:var(--text);background:var(--surface-alt);border-left:3px solid var(--border);padding:8px 12px;border-radius:0 var(--radius) var(--radius) 0}
+
+.decision-card{border-color:var(--accent)}
+.decision-card .card-head{background:var(--accent-light)}
+.decision-comment{width:100%;font-family:var(--font);font-size:.9rem;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);min-height:90px;resize:vertical;outline:none;color:var(--text)}
+.decision-comment:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,82,118,.1)}
+.decision-label{font-size:.8rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px}
+.decision-actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:flex-end}
+
+.btn{font-family:var(--font);font-size:.9rem;font-weight:600;padding:11px 28px;border-radius:var(--radius);cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-approve{background:var(--success);color:#fff}
+.btn-approve:hover{background:#176638}
+.btn-reject{background:var(--danger);color:#fff}
+.btn-reject:hover{background:#9a1818}
+
+.footer-note{text-align:center;margin-top:40px;font-size:.78rem;color:var(--text-hint)}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="logo">SUMMIT BHC</span>
+  <span class="sep">|</span>
+  <span>Highland Leadership</span>
+  <span class="sep">|</span>
+  <span>Purchase Order Approval</span>
+  <span class="env">v1.0</span>
+</div>
+
+<div class="shell">
+
+<div class="page-header">
+  <h1 id="poHeading">Purchase Order Approval</h1>
+  <p class="subtitle">Review the request below and record your approval decision.</p>
+  <div class="po-badge" id="poBadge"><span class="dot"></span> Loading&hellip;</div>
+</div>
+
+<div id="statusBanner" class="status-banner"></div>
+
+<div id="loadState" class="loading">Loading purchase order&hellip;</div>
+
+<div id="poView" style="display:none">
+
+  <!-- ── PO SUMMARY ── -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Purchase Order Summary</h2>
+      <span class="step" id="poNumberLabel"></span>
+    </div>
+    <div class="card-body">
+      <div class="summary-grid" id="summaryGrid"></div>
+      <div class="total-line">
+        <span class="tl-label">Purchase Order Total</span>
+        <span class="tl-value" id="poTotalValue">$0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LINE ITEMS ── -->
+  <div class="card">
+    <div class="card-head"><h2>Line Items</h2></div>
+    <div class="card-body" style="padding:0;overflow-x:auto">
+      <table class="line-items-table">
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th>Description</th>
+            <th>Expense Category</th>
+            <th class="num" style="width:80px">Qty</th>
+            <th class="num" style="width:120px">Unit Cost</th>
+            <th class="num" style="width:130px">Line Total</th>
+          </tr>
+        </thead>
+        <tbody id="lineItemsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── ATTACHMENTS ── -->
+  <div class="card">
+    <div class="card-head"><h2>Attachments</h2></div>
+    <div class="card-body" id="attachBody"></div>
+  </div>
+
+  <!-- ── APPROVAL CHAIN ── -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Approval Chain</h2>
+      <span class="step" id="chainSummary"></span>
+    </div>
+    <div class="card-body"><div class="chain" id="chainBody"></div></div>
+  </div>
+
+  <!-- ── DECISION ── -->
+  <div class="card decision-card" id="decisionCard" style="display:none">
+    <div class="card-head">
+      <h2>Your Decision</h2>
+      <span class="step" id="decisionRole"></span>
+    </div>
+    <div class="card-body">
+      <p id="decisionIntro" style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6"></p>
+      <label class="decision-label">Comments <span style="font-weight:400;color:var(--text-hint)">&mdash; required when rejecting</span></label>
+      <textarea id="decisionComment" class="decision-comment" placeholder="Add an approval note, or the reason this purchase order is being rejected..."></textarea>
+      <div class="decision-actions">
+        <button class="btn btn-reject" id="rejectBtn" onclick="submitDecision('Rejected')">Reject</button>
+        <button class="btn btn-approve" id="approveBtn" onclick="submitDecision('Approved')">Approve</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="footer-note">Summit BHC &middot; Purchase Order System v1.0 &middot; Highland Leadership Site<br>Questions? Contact Finance at ext. 4200</p>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION
+//   PO_API_URL   — Power Automate "Get PO" HTTP trigger (GET).
+//   DECISION_URL — Power Automate "PO Decision" HTTP trigger (POST).
+//   Leave both blank to run in demo mode with the sample PO below.
+// ═══════════════════════════════════════════════════════════
+const PO_API_URL = "";
+const DECISION_URL = "";
+
+// ── Sample PO used when no backend is configured (demo mode) ──
+const SAMPLE_PO = {
+  PONumber: "PO-2026-0042",
+  Status: "Pending Controller Approval",
+  RequestedDate: "2026-05-18",
+  Originator: "Jane Morales",
+  DepartmentName: "Nursing",
+  DepartmentCode: "200",
+  Vendor: "Acme Medical Supply Co.",
+  ExpenseCategory: "Medical Supplies",
+  PurchaseJustification: "Replenishment of wound-care consumables for the 24-bed unit. Current stock is projected to deplete within 10 days based on Q2 usage rates.",
+  POTotal: 750.00,
+  LineItems: [
+    { ItemDescription: "Sterile gauze pads 4x4 (case)", ExpenseCategory: "Medical Supplies", Quantity: 5, UnitCost: 48.00 },
+    { ItemDescription: "Adhesive medical tape, box of 12", ExpenseCategory: "Medical Supplies", Quantity: 10, UnitCost: 22.50 },
+    { ItemDescription: "Nitrile exam gloves, large (case)", ExpenseCategory: "Medical Supplies", Quantity: 3, UnitCost: 95.00 }
+  ],
+  Attachments: [ { fileName: "acme-quote-58213.pdf" } ],
+  ApprovalChain: [
+    { role: "Dept Head", approver: "Robert Chen", email: "rchen@summitbhc.com", status: "Approved", decidedAt: "2026-05-19T15:42:00Z", comments: "Confirmed against the unit supply budget. Approved." },
+    { role: "Controller", approver: "Maria Delgado", email: "mdelgado@summitbhc.com", status: "Pending", decidedAt: null, comments: "" }
+  ]
+};
+
+const params = new URLSearchParams(location.search);
+const poId = params.get("id") || params.get("po") || "";
+const token = params.get("token") || "";
+
+let po = null;
+
+// ── Helpers ──
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function fmt(n) {
+  return "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDate(d) {
+  if (!d) return "";
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(d) ? d + "T12:00:00" : d;
+  const dt = new Date(iso);
+  return isNaN(dt) ? d : dt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function fmtDateTime(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  return isNaN(dt) ? d : dt.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function statusClass(st) {
+  const s = (st || "").toLowerCase();
+  if (s.includes("reject")) return "s-rejected";
+  if (s.includes("pending")) return "s-pending";
+  if (s.includes("approv")) return "s-approved";
+  return "s-pending";
+}
+
+function showBanner(msg, type) {
+  const banner = document.getElementById("statusBanner");
+  banner.className = `status-banner show ${type}`;
+  banner.textContent = msg;
+  banner.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function showError(msg) {
+  document.getElementById("loadState").innerHTML =
+    `<div style="color:var(--danger);font-weight:600">${msg}</div>` +
+    `<p style="margin-top:8px;color:var(--text-muted);font-size:.85rem">Check the link in your approval email, or contact Finance at ext. 4200.</p>`;
+}
+
+// ── Load the purchase order ──
+async function loadPO() {
+  if (PO_API_URL && poId) {
+    try {
+      const sep = PO_API_URL.includes("?") ? "&" : "?";
+      const res = await fetch(`${PO_API_URL}${sep}id=${encodeURIComponent(poId)}&token=${encodeURIComponent(token)}`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      po = await res.json();
+    } catch (err) {
+      showError(`Could not load purchase order ${esc(poId || "")}: ${esc(err.message)}.`);
+      return;
+    }
+  } else {
+    po = JSON.parse(JSON.stringify(SAMPLE_PO));
+    if (poId) po.PONumber = poId;
+  }
+  render();
+}
+
+// ── Render ──
+function summaryItem(label, value, full) {
+  return `<div class="summary-item${full ? " s-full" : ""}">` +
+    `<div class="s-label">${esc(label)}</div>` +
+    `<div class="s-value">${esc(value || "—")}</div></div>`;
+}
+
+function render() {
+  document.getElementById("loadState").style.display = "none";
+  document.getElementById("poView").style.display = "block";
+
+  po.LineItems = po.LineItems || [];
+  po.ApprovalChain = po.ApprovalChain || [];
+
+  let total = 0;
+  po.LineItems.forEach(li => {
+    li.LineTotal = (Number(li.Quantity) || 0) * (Number(li.UnitCost) || 0);
+    total += li.LineTotal;
+  });
+  if (po.POTotal == null) po.POTotal = total;
+
+  // Header
+  document.getElementById("poHeading").textContent =
+    po.Vendor ? `Purchase Order — ${po.Vendor}` : "Purchase Order Approval";
+  document.getElementById("poNumberLabel").textContent = po.PONumber || "";
+  const badge = document.getElementById("poBadge");
+  badge.className = "po-badge " + statusClass(po.Status);
+  badge.innerHTML = `<span class="dot"></span> Status: ${esc(po.Status || "Submitted")}`;
+
+  // Summary
+  document.getElementById("summaryGrid").innerHTML = [
+    summaryItem("PO Number", po.PONumber),
+    summaryItem("Current Status", po.Status),
+    summaryItem("Originator", po.Originator),
+    summaryItem("Requested Date", fmtDate(po.RequestedDate)),
+    summaryItem("Department", po.DepartmentName
+      ? `${po.DepartmentName}${po.DepartmentCode ? " (" + po.DepartmentCode + ")" : ""}` : ""),
+    summaryItem("Vendor", po.Vendor),
+    summaryItem("Expense Category", po.ExpenseCategory),
+    summaryItem("Line Items", String(po.LineItems.length)),
+    summaryItem("Purchase Justification", po.PurchaseJustification, true)
+  ].join("");
+  document.getElementById("poTotalValue").textContent = fmt(po.POTotal);
+
+  // Line items
+  document.getElementById("lineItemsBody").innerHTML = po.LineItems.map((li, i) =>
+    `<tr>` +
+      `<td class="rownum">${i + 1}</td>` +
+      `<td>${esc(li.ItemDescription || li.Title || "")}</td>` +
+      `<td>${esc(li.ExpenseCategory || "—")}</td>` +
+      `<td class="num">${Number(li.Quantity) || 0}</td>` +
+      `<td class="num">${fmt(li.UnitCost)}</td>` +
+      `<td class="num line-total">${fmt(li.LineTotal)}</td>` +
+    `</tr>`
+  ).join("");
+
+  // Attachments
+  const ab = document.getElementById("attachBody");
+  if (po.Attachments && po.Attachments.length) {
+    ab.innerHTML = po.Attachments.map(a => {
+      const name = esc(a.fileName || a.name || "attachment");
+      const inner = a.url
+        ? `<a class="a-name" href="${esc(a.url)}" target="_blank" rel="noopener">${name}</a>`
+        : `<span class="a-name">${name}</span>`;
+      return `<div class="attach-item"><span class="a-icon">&#128206;</span>${inner}</div>`;
+    }).join("");
+  } else {
+    ab.innerHTML = `<p style="font-size:.85rem;color:var(--text-hint)">No attachments on this purchase order.</p>`;
+  }
+
+  renderChain();
+  renderDecision();
+}
+
+function renderChain() {
+  const chain = po.ApprovalChain;
+  const summary = document.getElementById("chainSummary");
+  const body = document.getElementById("chainBody");
+
+  if (!chain.length) {
+    summary.textContent = "Auto-approved";
+    body.innerHTML = `<p style="font-size:.88rem;color:var(--text-muted)">This purchase order is under $100 and was <strong>auto-approved</strong> on submission &mdash; no approvals required.</p>`;
+    return;
+  }
+
+  const done = chain.filter(s => s.status === "Approved").length;
+  summary.textContent = `${done} of ${chain.length} approved`;
+
+  body.innerHTML = chain.map((s, i) => {
+    const st = s.status || "Waiting";
+    const visual = ({
+      Approved: ["done", "&#10003;"],
+      Rejected: ["rejected", "&#10005;"],
+      Pending: ["active", String(i + 1)],
+      Waiting: ["waiting", String(i + 1)]
+    })[st] || ["waiting", String(i + 1)];
+
+    let meta;
+    if (st === "Approved" || st === "Rejected") meta = `${st} &middot; ${esc(fmtDateTime(s.decidedAt))}`;
+    else if (st === "Pending") meta = "Awaiting decision";
+    else meta = "Not yet routed";
+
+    return `<div class="chain-step">` +
+      `<div class="rail"><div class="marker ${visual[0]}">${visual[1]}</div><div class="connector"></div></div>` +
+      `<div class="info">` +
+        `<div class="role-line">` +
+          `<span class="role">${esc(s.role)}</span>` +
+          `<span class="approver">${esc(s.approver || "To be assigned")}</span>` +
+          `<span class="step-status ${visual[0]}">${esc(st)}</span>` +
+        `</div>` +
+        `<div class="step-meta">${meta}</div>` +
+        (s.comments ? `<div class="step-comment">${esc(s.comments)}</div>` : "") +
+      `</div></div>`;
+  }).join("");
+}
+
+function renderDecision() {
+  const card = document.getElementById("decisionCard");
+  const idx = po.ApprovalChain.findIndex(s => s.status === "Pending");
+
+  if (idx < 0) {
+    card.style.display = "none";
+    return;
+  }
+
+  const step = po.ApprovalChain[idx];
+  card.style.display = "block";
+  document.getElementById("decisionRole").textContent = "Reviewing as " + step.role;
+  document.getElementById("decisionIntro").innerHTML =
+    `This purchase order is awaiting <strong>${esc(step.role)}</strong> approval, assigned to <strong>${esc(step.approver || "you")}</strong>. ` +
+    `Approving routes it to the next approver in the chain; rejecting returns it to the originator and stops the workflow. ` +
+    `Only the assigned approver should act on this request.`;
+  document.getElementById("decisionComment").value = "";
+  document.getElementById("approveBtn").disabled = false;
+  document.getElementById("rejectBtn").disabled = false;
+}
+
+// ── Apply a decision to the local PO model ──
+function applyDecision(idx, decision, comments) {
+  const step = po.ApprovalChain[idx];
+  step.status = decision;
+  step.comments = comments;
+  step.decidedAt = new Date().toISOString();
+
+  if (decision === "Approved") {
+    if (idx + 1 < po.ApprovalChain.length) {
+      po.ApprovalChain[idx + 1].status = "Pending";
+      po.Status = `Pending ${po.ApprovalChain[idx + 1].role} Approval`;
+    } else {
+      po.Status = "Approved";
+    }
+  } else {
+    po.Status = "Rejected";
+  }
+}
+
+// ── Submit an approve/reject decision ──
+async function submitDecision(decision) {
+  const idx = po.ApprovalChain.findIndex(s => s.status === "Pending");
+  if (idx < 0) return;
+
+  const step = po.ApprovalChain[idx];
+  const comments = document.getElementById("decisionComment").value.trim();
+
+  if (decision === "Rejected" && !comments) {
+    showBanner("A reason is required when rejecting a purchase order.", "error");
+    document.getElementById("decisionComment").focus();
+    return;
+  }
+
+  const approveBtn = document.getElementById("approveBtn");
+  const rejectBtn = document.getElementById("rejectBtn");
+  approveBtn.disabled = true;
+  rejectBtn.disabled = true;
+  showBanner("Recording your decision...", "warn");
+
+  const payload = {
+    PONumber: po.PONumber,
+    step: step.role,
+    decision: decision,
+    comments: comments,
+    approver: step.approver || "",
+    token: token,
+    decidedAt: new Date().toISOString()
+  };
+
+  if (DECISION_URL) {
+    try {
+      const res = await fetch(DECISION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "HTTP " + res.status);
+        throw new Error(errText);
+      }
+    } catch (err) {
+      showBanner(`Could not record your decision: ${err.message}. Please try again.`, "error");
+      approveBtn.disabled = false;
+      rejectBtn.disabled = false;
+      return;
+    }
+  }
+
+  applyDecision(idx, decision, comments);
+  render();
+
+  if (decision === "Approved") {
+    const next = po.ApprovalChain.find(s => s.status === "Pending");
+    showBanner(next
+      ? `Approved. This purchase order has been routed to ${next.role} (${next.approver || "the next approver"}).`
+      : "Approved. This purchase order is now fully approved and has been routed to Accounts Payable.", "success");
+  } else {
+    showBanner("Purchase order rejected. The originator has been notified.", "success");
+  }
+}
+
+loadPO();
+</script>
+
+</body>
+</html>
